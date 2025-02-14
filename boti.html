@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phantom Wallet Solana Bot</title>
+  <!-- Solana Web3.js könyvtár betöltése -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/solana-web3.js/1.44.0/solana-web3.min.js"></script>
+</head>
+<body>
+  <h1>Solana Phantom Wallet Bot</h1>
+  <button id="connectButton">Connect Phantom Wallet</button>
+  <button id="sendTransactionButton" style="display:none;">Send Transaction</button>
+
+  <script>
+    // Létrehozzuk a Solana kapcsolódási objektumot
+    const { Connection, Transaction, SystemProgram, LAMPORTS_PER_SOL } = solanaWeb3;
+
+    // Kapcsolódunk a Solana devnethez
+    const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+
+    let walletPublicKey = null;
+
+    // Phantom Wallet csatlakozása
+    document.getElementById("connectButton").addEventListener("click", async () => {
+      if (window.solana) {
+        try {
+          // Kapcsolódás a Phantom Wallethez
+          const response = await window.solana.connect();
+          walletPublicKey = response.publicKey.toString();
+          console.log("Connected to Phantom Wallet:", walletPublicKey);
+
+          // A "Send Transaction" gombot megjelenítjük, ha sikeres a kapcsolat
+          document.getElementById("sendTransactionButton").style.display = "inline-block";
+        } catch (err) {
+          console.error("Connection to Phantom failed:", err);
+          alert("Error connecting to Phantom Wallet: " + err.message);
+        }
+      } else {
+        alert("Phantom Wallet extension is not installed. Please install it first.");
+      }
+    });
+
+    // Tranzakció küldése
+    document.getElementById("sendTransactionButton").addEventListener("click", async () => {
+      if (!walletPublicKey) {
+        alert("Please connect Phantom Wallet first!");
+        return;
+      }
+
+      try {
+        // Létrehozunk egy tranzakciót, ami 0.1 SOL-t küld
+        const transaction = new Transaction().add(
+          SystemProgram.transfer({
+            fromPubkey: walletPublicKey,  // Az aktuális Phantom Wallet publikus kulcsa
+            toPubkey: "SOLANA_PUBLIC_KEY",  // Címzett Solana publikus kulcsa
+            lamports: 0.1 * LAMPORTS_PER_SOL,  // 0.1 SOL
+          })
+        );
+
+        // Aláírás kérés a Phantom Wallettől
+        const signedTransaction = await window.solana.signTransaction(transaction);
+
+        // A tranzakció elküldése a Solana hálózatra
+        const txid = await connection.sendRawTransaction(signedTransaction.serialize());
+        console.log("Transaction ID:", txid);
+
+        alert("Transaction sent: " + txid);
+      } catch (err) {
+        console.error("Transaction failed:", err);
+        alert("Transaction failed: " + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
